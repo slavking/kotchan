@@ -1,0 +1,86 @@
+version: '3'
+
+services:
+  livechan:
+    restart: always
+    build: .
+    #    image: robotnaoborot/kotchan:latest
+    expose:
+      - "5800"
+    volumes:
+      - .:/app
+      - ./public:/app/public
+    env_file: .env
+    environment:
+      - DB_HOST=mongodb
+    command: node lib/index.js
+    depends_on:
+      - mongodb
+
+  nginx:
+    restart: always
+    build: ./nginx/
+    image: nginx:latest
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./public:/app/public
+      - ./data/etc/letsencrypt:/etc/letsencrypt
+        #      - ./data/certbot/www:/var/www/certbot
+# certbot:
+#   image: certbot/certbot
+#   volumes:
+#     - ./data/certbot/conf:/etc/letsencrypt
+#     - ./data/certbot/www:/var/www/certbot
+  #kotchan-letsencrypt:
+  #  image: linuxserver/letsencrypt
+  #  container_name: kotchan-letsencrypt
+  #  ports:
+  #    - 80:80
+  #    - 443:443
+  #  volumes:
+  #    - ./config/letsencrypt:/config
+  #  environment:
+  #    - EMAIL=robotnaoborot@gmail.com
+  #    - URL=kotchan.org
+  #    - SUBDOMAINS=wildcard
+  #    - VALIDATION=dns
+  #    - TZ=Europe/Moscow
+  #    - PUID=0
+  #    - PGID=0
+
+  mongodb:
+    restart: always
+    image: mongo:latest
+    ports:
+        - "27017:27017"
+    volumes:
+        - mongodata:/data/db
+    environment:
+        - MONGO_DATA_DIR=/data/db
+        - MONGO_LOG_DIR=/dev/null
+    command: mongod --logpath=/dev/null # --quiet
+
+  map:
+    restart: always
+    build: map
+    expose:
+      - "8007"
+    command: python /app/server.py
+    depends_on:
+      - livechan
+
+  anna:
+    restart: always
+    build: anna
+    volumes:
+      - ./anna:/app
+    command: python /app/anna.py
+    depends_on:
+      - livechan
+      - mongodb
+
+volumes:
+  mongodata:
+
